@@ -20,8 +20,7 @@ static struct node *push_front(struct node *head, int value)
 
 static void free_list(struct node *head)
 {
-    struct node *cur = head;
-    while (cur != NULL) {
+    for (struct node *cur = head; cur != NULL; ) {
         struct node *next = cur->next;
         free(cur);
         cur = next;

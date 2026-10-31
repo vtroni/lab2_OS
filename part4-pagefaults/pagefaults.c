@@ -15,10 +15,10 @@ struct snapshot {
 static struct snapshot take_snapshot(void)
 {
     struct rusage ru;
-    getrusage(RUSAGE_SELF, &ru);
-
     long total_pages = 0, resident_pages = 0;
+
     FILE *f = fopen("/proc/self/statm", "r");
+
     if (f == NULL || fscanf(f, "%ld %ld", &total_pages, &resident_pages) != 2) {
         perror("/proc/self/statm");
         exit(1);
@@ -45,34 +45,41 @@ int main(int argc, char **argv)
         fprintf(stderr, "usage: %s [pages]\n", argv[0]);
         return 2;
     }
+
     long page_size = sysconf(_SC_PAGESIZE);
     if (page_size <= 0) {
         fprintf(stderr, "cannot determine page size\n");
         return 1;
     }
+
     long pages = 1024;
+
     if (argc == 2) {
         char *end;
         errno = 0;
         pages = strtol(argv[1], &end, 10);
+
         if (errno != 0 || end == argv[1] || *end != '\0' || pages <= 0 ||
             (uintmax_t)pages > SIZE_MAX / (uintmax_t)page_size) {
             fprintf(stderr, "invalid page count: %s (expected a positive integer without size overflow)\n", argv[1]);
             return 2;
         }
     }
+
     size_t length = (size_t)pages * (size_t)page_size;
     printf("pages: %ld, page size: %ld B, region: %zu KiB\n\n", pages, page_size, length / 1024);
 
-    /* Перший виклик лише прогріває fopen/fscanf, щоб їхні page faults не потрапили в замір. */
     take_snapshot();
     struct snapshot s0 = take_snapshot();
+
     char *region = mmap(NULL, length, PROT_READ | PROT_WRITE,
                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
     if (region == MAP_FAILED) {
         perror("mmap");
         return 1;
     }
+
     struct snapshot s1 = take_snapshot();
     report("mmap", s0, s1);
 
